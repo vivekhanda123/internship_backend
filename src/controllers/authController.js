@@ -8,8 +8,6 @@ require('dotenv').config();
 
 require("../common/auth");
 
-const input = process.env.DEMO;
-
 exports.signUp = async (req, res) => {
   try {
     const {
@@ -63,7 +61,6 @@ exports.signUp = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    console.log(input);
     const { email, password } = req.body;
     if (!(email && password)) {
       return res.status(400).send("Send all the data");
@@ -82,7 +79,7 @@ exports.login = async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id },"shhhh", { expiresIn: "1h" });
+    const token = jwt.sign({ userId: user._id },process.env.JWT_SECRET, { expiresIn: "1h" });
 
     // Set cookie options
     const options = {
