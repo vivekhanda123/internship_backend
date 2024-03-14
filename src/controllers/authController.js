@@ -1,11 +1,11 @@
 const User = require("../models/user");
 const Demo = require("../models/demo");
+const Todo = require("../models/todo");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const nodemailer = require("nodemailer");
 require('dotenv').config();
-
 require("../common/auth");
 
 exports.signUp = async (req, res) => {
@@ -119,18 +119,18 @@ exports.forgot = async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: "Gmail",
       auth: {
-        user: "vivekhandaindore@gmail.com", // EMAIL_USER
-        pass: "ggtp ugpi mqks sywf", // EMAIL_PASS
+        user: process.env.EMAIL_USER, // EMAIL_USER
+        pass: process.env.EMAIL_PASS, // EMAIL_PASS
       },
     });
     const mailOptions = {
-      from: "vivek@yopmail.com",
+      from: process.env.EMAIL_USER,
       to: email,
       subject: "Password Reset Email",
 
       html: `<p>You are receiving this email because you (or someone else) have requested the reset of the password for your account.</p>
         <p>Please click on the following link, or paste this into your browser to complete the process:</p>
-        <p>${"http://localhost:5173"}/reset/${user._id.toString()}</p> 
+        <p>${process.env.FRONTEND_URL}/reset/${user._id.toString()}</p> 
         <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>`,
     };
 
@@ -151,8 +151,8 @@ exports.forgot = async (req, res) => {
 
 exports.reset = async (req, res) => {
   try {
-    const { password,_id } = req.body;
-    // const _id = req.params.id;
+    const { password} = req.body; //_id
+    const _id = req.params.id;
 
     if (!_id || _id.trim() === '') {
       return res.status(400).json({ message: "Invalid User ID" });
@@ -177,10 +177,12 @@ exports.reset = async (req, res) => {
   }
 };
 
+// Recheck pending
 exports.changePassword = async (req, res) => {
   try {
     const requestingUserId = req.userId; // User ID extracted from JWT token
     const { _id, new_password } = req.body;
+    // const _id = req.body.id;
 
     // Check if the user making the request is authorized to change
     if (requestingUserId !== _id) {
@@ -203,19 +205,14 @@ exports.changePassword = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const requestingUserId = req.userId;
-    const _id = req.params.id;
+    // const _id = req.params.id;
     const updateData = req.body;
-
-    if (requestingUserId !== _id) {
-      return res
-        .status(403)
-        .json({ message: "Unauthorized to update the information" });
-    }
     
     // Updation code
-    const updatedUser = await User.findByIdAndUpdate(_id, updateData, {
+    const updatedUser = await User.findByIdAndUpdate({_id:requestingUserId}, updateData, {
       new: true,
     });
+    console.log
 
     // User not found
     if (!updatedUser) {
@@ -272,16 +269,16 @@ exports.userList = async (req, res) => {
       page = 1; // Default page number
     }
     if (!size) {
-      size = 5; // Default page size
+      size = 10; // Default page size
     }
     const limit = parseInt(size); //convert strint value to integer 
     const skip = (page - 1) * size;
 
     // Constructing the search query based on the 'search' parameter
     const searchQuery = search ? { $or: [
-      { email: { $regex: search, $options: 'i' } },      //searching and replacing 
-      { first_name: { $regex: search, $options: 'i' } },
-      { last_name: { $regex: search, $options: 'i' } }
+         //searching and replacing 
+      { first_name: { $regex: '^'+search, $options: 'i' } }, //by using this we will sort with starting letter
+      { last_name: { $regex: '^'+search, $options: 'i' } }
     ] } : {};
 
     // Exclude the logged-in user details from the list
@@ -296,7 +293,7 @@ exports.userList = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.send([users]);
+      res.json(users)
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
@@ -305,13 +302,13 @@ exports.userList = async (req, res) => {
 
 exports.userData = async(req,res) =>{
   try {
-    const { email } = req.params;
-
-    const user = await User.findOne({ email });
+    const requestingUserId = req.userId;
+    // console.log(requestingUserId);
+    const user = await User.findOne( {_id:requestingUserId} );
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
-    res.status(400).send( user);
+    res.status(200).send(user);
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
@@ -355,3 +352,138 @@ exports.individualDetails = async (req, res) => {
     res.status(500).send("Something went wrong");
   }
 };
+
+// Todo List controllers 
+
+exports.add = async(req,res)=>{
+  try {
+    const requestingUserId = req.userId;
+    const {
+      taskName,
+      status,
+      dateAssigned,
+      dateFrom,
+      dateTo
+    } = req.body;
+
+    // Check if task already exists
+    let taskPresent = await Todo.findOne({ taskName });
+    if (taskPresent) {
+      return res
+        .status(400)
+        .json({ message: "Task already present in ToDo List" });
+    }
+
+    // Check if any detail is not filled
+    if (
+      !taskName ||
+      !status ||
+      !dateAssigned ||
+      !dateFrom ||
+      !dateTo
+    ) {
+      return res.status(402).json({ error: "Please fill all details" });
+    }
+
+    // Create new record
+    const todoRecords = new Todo(req.body);
+   
+    todoRecords.userId = requestingUserId;
+    const recordCreated = await todoRecords.save();
+    return res.status(200).json({message:"Task created successfully",recordCreated});
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("User not created");
+  }
+}
+
+exports.todoUpdate = async(req,res)=>{
+  try {
+    const _id = req.params.id;
+    // const requestingUserId = req.userId;
+    const updateData = req.body;
+
+    // if (requestingUserId !== _id) {
+    //   return res
+    //     .status(403)
+    //     .json({ message: "Unauthorized to update the information" });
+    // }
+    
+    // Updation code
+    const updatedList = await Todo.findByIdAndUpdate(_id, updateData, {
+      new: true,
+    });
+
+    // User not found
+    if (!updatedList) {
+      return res.status(404).json({ message: "Data not found or data not updated " });
+    }
+    res.status(200).json({ message: "Todo List updated successfully", user: updatedList });
+
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("User not created");
+  }
+}
+
+exports.todoDelete = async (req, res) => {
+  try {
+    const _id = req.params.id;
+    const deleteData = await Todo.findByIdAndDelete(_id);
+    
+    if (!deleteData) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    
+    res.json({ message: "Task deleted successfully", deletedTask: deleteData });
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("Failed to delete task");
+  }
+}
+
+exports.showData = async (req, res) => {
+  try {
+    let { page, size, search, sortOrder, sortField } = req.query;
+
+    if (!page) {
+      page = 1;
+    }
+    if (!size) {
+      size = 5;
+    }
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    // Search query for searching 
+    const searchQuery = search ? {
+      $or: [
+        { taskName: { $regex: '^' + search, $options: 'i' } },//regular expression pattern to match the beginning of the string
+        { status: { $regex: '^' + search, $options: 'i' } },
+      ]
+    } : {};
+
+    // Sorting criteria
+    let sortCriteria = {};
+    if (sortField) {
+      sortCriteria[sortField] = sortOrder === 'desc' ? -1 : 1;
+    } else {
+      // Default sorting 
+      sortCriteria = { taskName: 1 }; // Sort by taskName in ascending order
+    }
+
+    const todos = await Todo.find(searchQuery)
+      .sort(sortCriteria)
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ todos: todos });
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("Something went wrong");
+  }
+};
+
+
+
+
