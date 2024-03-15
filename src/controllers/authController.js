@@ -52,7 +52,7 @@ exports.signUp = async (req, res) => {
     // Hash the password
     const userCreated = await addingUserRecords.save();
     // User.password = undefined ;
-    return res.status(200).send(userCreated);
+    return res.status(200).json({message:"Signed Up Successfully",result:userCreated});
   } catch (e) {
     console.log(e.message);
     res.status(500).send(e.message);
@@ -98,8 +98,8 @@ exports.login = async (req, res) => {
     // Send response with token and user details
     res.json({
       success: true,
-      token,
-      user,
+      message:"User Logged In Successfully",
+      result:user,token,
     });
   } catch (error) {
     console.error(error.message);
@@ -151,25 +151,17 @@ exports.forgot = async (req, res) => {
 
 exports.reset = async (req, res) => {
   try {
-    const { password} = req.body; //_id
+    const {password} = req.body; //_id
     const _id = req.params.id;
 
-    if (!_id || _id.trim() === '') {
+    if (!_id ) {
       return res.status(400).json({ message: "Invalid User ID" });
     }
 
-    const user = await User.findOne({ _id });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Hash the new password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Update the user's password
-    user.password = hashedPassword;
-    await user.save();
+    await User.findByIdAndUpdate(_id, {password:hashedPassword}); // {new:true}
+  
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
     console.error("Error:", error.message);
@@ -177,12 +169,10 @@ exports.reset = async (req, res) => {
   }
 };
 
-// Recheck pending
 exports.changePassword = async (req, res) => {
   try {
     const requestingUserId = req.userId; // User ID extracted from JWT token
     const { _id, new_password } = req.body;
-    // const _id = req.body.id;
 
     // Check if the user making the request is authorized to change
     if (requestingUserId !== _id) {
@@ -212,8 +202,7 @@ exports.update = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate({_id:requestingUserId}, updateData, {
       new: true,
     });
-    console.log
-
+  
     // User not found
     if (!updatedUser) {
       return res
@@ -223,7 +212,7 @@ exports.update = async (req, res) => {
 
     res
       .status(200)
-      .json({ message: "User updated successfully", user: updatedUser });
+      .json({ message: "User updated successfully", result: updatedUser });
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
@@ -239,21 +228,21 @@ exports.delete = async (req, res) => {
         .status(403)
         .json({ message: "Unauthorized to delete details" });
     }
-    const updateData = await User.updateOne(
+    const deleteData = await User.updateOne(
       { _id: _id },
       { $set: { status: "inactive" } }
     );
 
-    // Updation code
-    const updatedUser = await User.findByIdAndUpdate(_id, updateData, {
+    // Deletion code
+    const deletedUser = await User.findByIdAndUpdate(_id, deleteData, {
       new: true,
     });
-    if (!updatedUser) {
+    if (!deletedUser) {
       return res.status(404).json({ message: "User not set to inactive" });
     }
     res
       .status(200)
-      .json({ message: "User deleted successfully", user: updatedUser });
+      .json({ message: "User deleted successfully", result: deletedUser });
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
@@ -293,7 +282,7 @@ exports.userList = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-      res.json(users)
+      res.status(200).json({message:"",result:users})
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
@@ -303,12 +292,12 @@ exports.userList = async (req, res) => {
 exports.userData = async(req,res) =>{
   try {
     const requestingUserId = req.userId;
-    // console.log(requestingUserId);
+   
     const user = await User.findOne( {_id:requestingUserId} );
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
-    res.status(200).send(user);
+    res.status(200).json({message:"",result:user});//message,result ,status
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
@@ -326,7 +315,7 @@ exports.additionalData = async (req, res) => {
   try {
     const addingUserRecords = new Demo(req.body);
     const userCreated = await addingUserRecords.save();
-    return res.status(201).send(userCreated);
+    return res.status(201).json({message:"Additional data created",result:userCreated});
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
@@ -346,7 +335,7 @@ exports.individualDetails = async (req, res) => {
         },
       },
     ]);
-    res.send(findData);
+    res.json({message:"",result:findData});
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
@@ -390,7 +379,7 @@ exports.add = async(req,res)=>{
    
     todoRecords.userId = requestingUserId;
     const recordCreated = await todoRecords.save();
-    return res.status(200).json({message:"Task created successfully",recordCreated});
+    return res.status(200).json({message:"Task created successfully",result:recordCreated});
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("User not created");
@@ -418,7 +407,7 @@ exports.todoUpdate = async(req,res)=>{
     if (!updatedList) {
       return res.status(404).json({ message: "Data not found or data not updated " });
     }
-    res.status(200).json({ message: "Todo List updated successfully", user: updatedList });
+    res.status(200).json({ message: "Todo List updated successfully", result: updatedList });
 
   } catch (error) {
     console.error("Error:", error.message);
@@ -435,7 +424,7 @@ exports.todoDelete = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
     
-    res.json({ message: "Task deleted successfully", deletedTask: deleteData });
+    res.json({ message: "Task deleted successfully", result: deleteData });
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Failed to delete task");
@@ -477,7 +466,7 @@ exports.showData = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.json({ todos: todos });
+    res.status(200).json({ message:"",result: todos });
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");

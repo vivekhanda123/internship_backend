@@ -16,7 +16,7 @@ router.post("/login",authController.login);
 router.post("/forgotPassword",authController.forgot);
 
 // Reset password
-router.post("/reset/:id",authController.reset);
+router.put("/reset/:id",authController.reset);
 
 // Update user account
 router.put("/update",authenticateToken,authController.update); //"id"
