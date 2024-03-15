@@ -24,6 +24,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.3.0",
     "mongoose": "^8.2.0",
+    "netlify-lambda": "^2.0.16",
     "nodemailer": "^6.9.10",
     "socket.io": "^4.7.4"
   }
