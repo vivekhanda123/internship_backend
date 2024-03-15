@@ -9,7 +9,7 @@ const cookieParser = require("cookie-parser"); //extract info/data from cookie
 const bodyParser = require("body-parser") // parsing incoming request in bodies
 const cors = require("cors"); //front-end client can make requests for resources from backend 
 
-app.use(cors());
+app.use(cors({origin:true}));
 app.use(bodyParser.json());
 
 app.use(express.json()); // understands json files 
