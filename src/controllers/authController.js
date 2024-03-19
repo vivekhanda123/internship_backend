@@ -297,7 +297,8 @@ exports.userData = async(req,res) =>{
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
-    res.status(200).json({message:"",result:user});//message,result ,status
+    //res.status(200).send({message:"",result:user});//message,result ,status
+    res.status(200).send(user);
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).send("Something went wrong");
