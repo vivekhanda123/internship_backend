@@ -15,7 +15,7 @@ app.use(bodyParser.json());
 app.use(express.json()); // understands json files 
 app.use(cookieParser()); // understands cookies 
 app.use(router);
-
+// app.send("hello")
 app.listen(port,()=>{
     console.log(`Connection is live at ${port}`);
 })
