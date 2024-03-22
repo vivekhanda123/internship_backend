@@ -297,6 +297,7 @@ exports.userData = async(req,res) =>{
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
+    user.password = undefined;
     //res.status(200).send({message:"",result:user});//message,result ,status
     res.status(200).send(user);
   } catch (error) {
